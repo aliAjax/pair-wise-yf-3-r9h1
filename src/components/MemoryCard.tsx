@@ -1,18 +1,20 @@
 import type { SmellMemory } from '../utils/constants';
 import { getSeasonInfo, getSmellTypeInfo, getEmotionInfo } from '../utils/constants';
 import { formatDate, contrastTextColor } from '../utils/helpers';
-import { Pencil, Trash2, ChevronDown, ChevronUp, Heart } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronUp, Heart, Check, Combine } from 'lucide-react';
 
 interface Props {
   memory: SmellMemory;
   index: number;
   isExpanded: boolean;
+  isSelected: boolean;
   onToggle: () => void;
+  onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export default function MemoryCard({ memory, index, isExpanded, onToggle, onEdit, onDelete }: Props) {
+export default function MemoryCard({ memory, index, isExpanded, isSelected, onToggle, onToggleSelect, onEdit, onDelete }: Props) {
   const season = getSeasonInfo(memory.season);
   const stype = getSmellTypeInfo(memory.smell_type);
   const emotion = getEmotionInfo(memory.emotion);
@@ -22,7 +24,9 @@ export default function MemoryCard({ memory, index, isExpanded, onToggle, onEdit
 
   return (
     <article
-      className="group relative bg-paper-50 rounded-2xl border border-paper-300 shadow-card overflow-hidden hover:shadow-paper-hover hover:-translate-y-1 transition-all duration-300 animate-fadeInUp"
+      className={`group relative bg-paper-50 rounded-2xl border shadow-card overflow-hidden hover:shadow-paper-hover hover:-translate-y-1 transition-all duration-300 animate-fadeInUp ${
+        isSelected ? 'border-ochre-500 ring-2 ring-ochre-400/60' : 'border-paper-300'
+      }`}
       style={{ animationDelay: `${Math.min(index * 60, 600)}ms` }}
     >
       <div className="flex">
@@ -49,15 +53,29 @@ export default function MemoryCard({ memory, index, isExpanded, onToggle, onEdit
                   {memory.source_guess}
                 </p>
               </div>
-              <div
-                className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center shadow-sm border-2 border-paper-50"
-                style={{
-                  backgroundColor: memory.color_association,
-                  color: contrastTextColor(memory.color_association),
-                }}
-                title={`颜色联想: ${memory.color_association}`}
-              >
-                <span className="text-xs font-bold">色</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-ochre-500 border-ochre-600 text-paper-50 scale-110'
+                      : 'bg-paper-50/80 border-paper-400 text-transparent hover:border-ochre-400'
+                  }`}
+                  title={isSelected ? '取消勾选' : '勾选以合并重复记录'}
+                  aria-pressed={isSelected}
+                >
+                  <Check className="w-3 h-3" strokeWidth={3.5} />
+                </button>
+                <div
+                  className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center shadow-sm border-2 border-paper-50"
+                  style={{
+                    backgroundColor: memory.color_association,
+                    color: contrastTextColor(memory.color_association),
+                  }}
+                  title={`颜色联想: ${memory.color_association}`}
+                >
+                  <span className="text-xs font-bold">色</span>
+                </div>
               </div>
             </div>
 
@@ -77,6 +95,11 @@ export default function MemoryCard({ memory, index, isExpanded, onToggle, onEdit
               {memory.want_again && (
                 <span className="scent-tag bg-moss-100 text-moss-600">
                   <Heart className="w-3 h-3 fill-current" /> 想再闻
+                </span>
+              )}
+              {memory.merged_from && memory.merged_from.length > 0 && (
+                <span className="scent-tag bg-lavender-300/40 text-lavender-600" title={`合并自编号：${memory.merged_from.join('、')}`}>
+                  <Combine className="w-3 h-3" /> 合并×{memory.merged_from.length}
                 </span>
               )}
             </div>
@@ -144,6 +167,12 @@ export default function MemoryCard({ memory, index, isExpanded, onToggle, onEdit
               <div className="mt-3 flex items-center justify-between pt-2 border-t border-paper-200/60">
                 <div className="flex items-center gap-1.5 text-[11px] text-ink-700/50">
                   <span>更新于 {formatDate(memory.updated_at)}</span>
+                  {memory.merged_from && memory.merged_from.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-lavender-600">
+                      <Combine className="w-3 h-3" />
+                      原记录编号：{memory.merged_from.join('、')}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button

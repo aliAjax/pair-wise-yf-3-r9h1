@@ -16,6 +16,8 @@ export interface SmellMemory {
   want_again: boolean;
   created_at: string;
   updated_at: string;
+  /** 合并产生的记录会保留所有原记录编号 */
+  merged_from?: string[];
 }
 
 export const SEASONS: { value: Season; label: string; emoji: string }[] = [
