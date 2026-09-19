@@ -77,3 +77,68 @@ export function isLightColor(hex: string): boolean {
 export function contrastTextColor(hex: string): string {
   return isLightColor(hex) ? '#2A2118' : '#FBF7EE';
 }
+
+// ============ 合并相关 ============
+
+/** 判断两条记录是否允许合并：地点与气味类型必须完全一致 */
+export function canMergeMemories(a: SmellMemory, b: SmellMemory): boolean {
+  return a.location === b.location && a.smell_type === b.smell_type;
+}
+
+/**
+ * 选择主记录：更新时间较新者为主；
+ * 更新时间相同则取创建时间较新者，再相同以 id 兜底，保证结果确定。
+ */
+export function pickPrimary(a: SmellMemory, b: SmellMemory): SmellMemory {
+  if (a.updated_at !== b.updated_at) {
+    return a.updated_at > b.updated_at ? a : b;
+  }
+  if (a.created_at !== b.created_at) {
+    return a.created_at > b.created_at ? a : b;
+  }
+  return a.id < b.id ? a : b;
+}
+
+/** 正文合并：主记录正文在前，另一条正文（去重后）另起一段并入 */
+export function mergeMemoryText(primaryText: string, otherText: string): string {
+  const p = primaryText.trim();
+  const o = otherText.trim();
+  if (!o || o === p) return p;
+  if (!p) return o;
+  return `${p}\n\n${o}`;
+}
+
+/** 提交前对勾选记录做快照：任一项被修改（含更新时间/地点/类型）或移除都会被发现 */
+export interface MemorySnapshot {
+  id: string;
+  updated_at: string;
+  location: string;
+  smell_type: string;
+}
+
+export function snapshotMemory(m: SmellMemory): MemorySnapshot {
+  return { id: m.id, updated_at: m.updated_at, location: m.location, smell_type: m.smell_type };
+}
+
+/**
+ * 校验提交时勾选记录与快照是否仍一致。
+ * 返回 null 表示通过，否则返回不可提交的原因。
+ */
+export function verifySnapshots(
+  snapshots: MemorySnapshot[],
+  current: SmellMemory[],
+): string | null {
+  for (const snap of snapshots) {
+    const now = current.find((m) => m.id === snap.id);
+    if (!now) {
+      return `原勾选记录（编号 ${snap.id}）已被移除，本次合并已取消，请重新勾选。`;
+    }
+    if (now.updated_at !== snap.updated_at) {
+      return `原勾选记录（编号 ${snap.id}）在勾选后被修改过，本次合并已取消，请重新勾选。`;
+    }
+    if (now.location !== snap.location || now.smell_type !== snap.smell_type) {
+      return `原勾选记录（编号 ${snap.id}）的地点或气味类型已变化，本次合并已取消，请重新勾选。`;
+    }
+  }
+  return null;
+}
